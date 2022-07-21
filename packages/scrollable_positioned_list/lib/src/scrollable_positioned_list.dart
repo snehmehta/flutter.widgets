@@ -51,6 +51,8 @@ class ScrollablePositionedList extends StatefulWidget {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.minCacheExtent,
+    this.stopScrolling = false,
+    this.onItemKey,
   })  : assert(itemCount != null),
         assert(itemBuilder != null),
         itemPositionsNotifier = itemPositionsListener as ItemPositionsNotifier?,
@@ -78,6 +80,8 @@ class ScrollablePositionedList extends StatefulWidget {
     this.addAutomaticKeepAlives = true,
     this.addRepaintBoundaries = true,
     this.minCacheExtent,
+    this.stopScrolling = false,
+    this.onItemKey,
   })  : assert(itemCount != null),
         assert(itemBuilder != null),
         assert(separatorBuilder != null),
@@ -170,6 +174,9 @@ class ScrollablePositionedList extends StatefulWidget {
   /// in builds of widgets that would otherwise already be built in the
   /// cache extent.
   final double? minCacheExtent;
+
+  final bool stopScrolling;
+  final String Function(int index)? onItemKey;
 
   @override
   State<StatefulWidget> createState() => _ScrollablePositionedListState();
@@ -328,10 +335,41 @@ class _ScrollablePositionedListState extends State<ScrollablePositionedList>
         });
       }
     }
+
+    if (widget.stopScrolling) {
+      assert(widget.onItemKey != null,
+          "Please implement onItemKey if stopScrolling was enabled");
+      if (_lastTargetKey != null) {
+        var currTargetIndex = _getIndexOfKey();
+        if (currTargetIndex != null && currTargetIndex > primary.target) {
+          primary.target++;
+        }
+      }
+    }
+  }
+
+  String? _lastTargetKey;
+  int? _getIndexOfKey() {
+    if (widget.onItemKey != null) {
+      int? index;
+      for (var i = 0; i < widget.itemCount; i++) {
+        if (widget.onItemKey!(i) == _lastTargetKey) {
+          index = i;
+          break;
+        }
+      }
+      return index;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.itemCount > 0 && widget.onItemKey != null) {
+      _lastTargetKey = widget.onItemKey!(primary.target);
+    } else {
+      _lastTargetKey = null;
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final cacheExtent = _cacheExtent(constraints);
